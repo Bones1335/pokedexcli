@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/Bones1335/pokedexcli/internal/pokeapi"
 )
 
+type config struct {
+	pokeapiClient    pokeapi.Client
+	nextLocationsURL *string
+	prevLocationsURL *string
+}
 
-func startRepl() {
+func startRepl(cfg *config) {
 	reader := bufio.NewScanner(os.Stdin)
-	repl := &Repl{
-		commands: getCommands(),
-		config: &Config{},
-	}
-
 	for {
 		fmt.Print("Pokedex > ")
 		reader.Scan()
@@ -26,10 +28,9 @@ func startRepl() {
 
 		commandName := words[0]
 
-		
-		command, exists := repl.commands[commandName]
+		command, exists := getCommands()[commandName]
 		if exists {
-			err := command.callback(repl.config)
+			err := command.callback(cfg)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -38,7 +39,6 @@ func startRepl() {
 			fmt.Println("Unknown command")
 			continue
 		}
-
 	}
 }
 
@@ -49,47 +49,32 @@ func cleanInput(text string) []string {
 }
 
 type cliCommand struct {
-	name string
+	name        string
 	description string
-	callback func(cfg *Config) error
+	callback    func(*config) error
 }
 
 func getCommands() map[string]cliCommand {
 	return map[string]cliCommand{
 		"help": {
-			name: "help",
+			name:        "help",
 			description: "Displays a help message",
-			callback: commandHelp,
-		},
-		"exit": {
-			name: "exit",
-			description: "Exit the Pokedex",
-			callback: commandExit,
+			callback:    commandHelp,
 		},
 		"map": {
-			name: "map",
-			description: "Displays next location areas",
-			callback: commandMap,
+			name:        "map",
+			description: "Get the next page of locations",
+			callback:    commandMapf,
 		},
 		"mapb": {
-			name: "mapb",
-			description: "Displays previous location areas",
-			callback: commandMapb,
+			name:        "mapb",
+			description: "Get the previous page of locations",
+			callback:    commandMapb,
+		},
+		"exit": {
+			name:        "exit",
+			description: "Exit the Pokedex",
+			callback:    commandExit,
 		},
 	}
-}
-
-type Config struct {
-	Count int `json:"count"`
-	Next string `json:"next"`
-	Previous *string `json:"previous"`
-	Results []struct {
-		Name string `json:"name"`
-		URL string `json:"url"`
-	} `json:"results"`
-}
-
-type Repl struct {
-	commands map[string]cliCommand
-	config *Config
 }
